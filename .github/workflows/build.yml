@@ -20,7 +20,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.5 # إجبار النظام على استخدام إصدار متوافق
 
       - name: Create Assets Directory
         run: mkdir -p app/src/main/assets
@@ -30,8 +34,7 @@ jobs:
           curl -L "https://cdn.plyr.io/3.4.6/plyr.min.js" -o app/src/main/assets/plyr.min.js
           curl -L "https://cdn.plyr.io/3.4.6/plyr.css" -o app/src/main/assets/plyr.min.css
 
-      # ملاحظة: تم استبدال ./gradlew بـ gradle العادي المثبت في الويندوز/لينكس للتبسيط
-      - name: Build debug APK
+      - name: Build with Gradle
         run: gradle assembleDebug
 
       - name: Upload APK Artifact
@@ -47,8 +50,5 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: "VideoPlyr Build #${{ github.run_number }}"
           files: app/build/outputs/apk/debug/app-debug.apk
-          draft: false
-          prerelease: false
-          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
