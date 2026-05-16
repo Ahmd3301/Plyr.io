@@ -27,16 +27,12 @@ jobs:
 
       - name: Download Plyr Assets
         run: |
-          # تحميل ملفات Plyr لتضمينها محلياً في الـ APK (لتقليل الاعتماد على الإنترنت وزيادة السرعة)
           curl -L "https://cdn.plyr.io/3.4.6/plyr.min.js" -o app/src/main/assets/plyr.min.js
           curl -L "https://cdn.plyr.io/3.4.6/plyr.css" -o app/src/main/assets/plyr.min.css
-          echo "✅ Plyr assets downloaded successfully."
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      # ملاحظة: تم استبدال ./gradlew بـ gradle العادي المثبت في الويندوز/لينكس للتبسيط
+      - name: Build debug APK
+        run: gradle assembleDebug
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -48,7 +44,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.${{ github.run_number }}
+          tag_name: build-${{ github.run_number }}
           name: "VideoPlyr Build #${{ github.run_number }}"
           files: app/build/outputs/apk/debug/app-debug.apk
           draft: false
@@ -56,6 +52,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Success Message
-        run: echo "🚀 Build finished! Check the 'Releases' section to download your APK."
