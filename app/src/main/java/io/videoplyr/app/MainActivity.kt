@@ -1,7 +1,6 @@
 package io.videoplyr.app
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -22,10 +21,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        
+        // إنشاء الواجهة برمجياً لضمان عدم حدوث خطأ في ملف XML
+        val rootLayout = FrameLayout(this)
+        rootLayout.setBackgroundColor(Color.BLACK)
+        
+        webView = WebView(this)
+        webView.layoutParams = FrameLayout.LayoutParams(-1, -1)
+        rootLayout.addView(webView)
+
+        val customViewContainer = FrameLayout(this)
+        customViewContainer.id = View.generateViewId()
+        customViewContainer.visibility = View.GONE
+        customViewContainer.setBackgroundColor(Color.BLACK)
+        rootLayout.addView(customViewContainer)
+
+        setContentView(rootLayout)
 
         setupFullscreen()
-        setupWebView()
+        setupWebView(customViewContainer)
         handleIntent()
     }
 
@@ -40,13 +54,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private fun setupWebView() {
-        webView = findViewById(R.id.webView)
+    private fun setupWebView(container: FrameLayout) {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             allowFileAccess = true
-            allowContentAccess = true
             mediaPlaybackRequiresUserGesture = false
             allowFileAccessFromFileURLs = true
             allowUniversalAccessFromFileURLs = true
@@ -56,60 +68,40 @@ class MainActivity : AppCompatActivity() {
             override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
                 customView = view
                 customViewCallback = callback
-                findViewById<FrameLayout>(R.id.customViewContainer).apply {
-                    visibility = View.VISIBLE
-                    addView(view)
-                }
+                container.visibility = View.VISIBLE
+                container.addView(view)
                 webView.visibility = View.GONE
             }
 
             override fun onHideCustomView() {
-                findViewById<FrameLayout>(R.id.customViewContainer).apply {
-                    visibility = View.GONE
-                    removeView(customView)
-                }
+                container.visibility = View.GONE
+                container.removeView(customView)
                 webView.visibility = View.VISIBLE
                 customView = null
                 customViewCallback?.onCustomViewHidden()
             }
         }
 
-        webView.addJavascriptInterface(AndroidBridge(), "Android")
+        webView.addJavascriptInterface(object {
+            @JavascriptInterface fun onVideoReady() {}
+        }, "Android")
+        
         webView.loadUrl("file:///android_asset/player.html")
     }
 
     private fun handleIntent() {
-        val data: Uri? = intent.data
-        data?.let { uri ->
+        intent.data?.let { uri ->
             if (uri.scheme == "videoplyrio") {
-                when (uri.host) {
-                    "open" -> {
-                        val url = uri.getQueryParameter("url")
-                        val title = uri.getQueryParameter("title") ?: "Video"
-                        webView.evaluateJavascript("loadVideo('$url', '$title')", null)
-                    }
-                    "playlist" -> {
-                        val base64 = uri.getQueryParameter("data")
-                        val json = String(Base64.decode(base64, Base64.DEFAULT))
-                        webView.evaluateJavascript("loadPlaylist('$json')", null)
-                    }
+                if (uri.host == "open") {
+                    val url = uri.getQueryParameter("url")
+                    val title = uri.getQueryParameter("title") ?: "Video"
+                    webView.evaluateJavascript("loadVideo('$url', '$title')", null)
+                } else if (uri.host == "playlist") {
+                    val base64 = uri.getQueryParameter("data") ?: ""
+                    val json = String(Base64.decode(base64, Base64.DEFAULT))
+                    webView.evaluateJavascript("loadPlaylist('$json')", null)
                 }
             }
-        }
-    }
-
-    inner class AndroidBridge {
-        @JavascriptInterface
-        fun onVideoReady() { /* Player Ready */ }
-    }
-
-    override fun onBackPressed() {
-        if (customView != null) {
-            webView.webChromeClient?.onHideCustomView()
-        } else if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
         }
     }
 }
