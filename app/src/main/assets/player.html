@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>VideoPlyr</title>
+    <link rel="stylesheet" href="plyr.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --plyr-color-main: rgba(255, 255, 255, 0.4) !important; }
+        body, html { width: 100%; height: 100%; background: #000; overflow: hidden; }
+        .video-player-container { width: 100%; height: 100%; position: relative; }
+        .plyr { width: 100%; height: 100%; position: absolute; background: #000; }
+        .plyr.mode-fill video { object-fit: cover; }
+        .plyr.mode-contain video { object-fit: contain; }
+        .plyr.mode-square video { width: auto; height: 80%; margin: 0 auto; }
+        .plyr__title {
+            position: absolute; bottom: 64px; left: 20px; z-index: 12;
+            font-size: 15px; color: #fff; background: rgba(255, 255, 255, 0.12);
+            border-radius: 4px; padding: 6px 14px; cursor: pointer;
+            opacity: 0; transition: all 0.4s; backdrop-filter: blur(4px);
+        }
+        .plyr--controls-visible .plyr__title { opacity: 1; }
+        .plyr__playlist {
+            position: absolute; left: 20px; right: 20px; bottom: 114px;
+            z-index: 20; opacity: 0; visibility: hidden; transition: 0.5s;
+        }
+        .playlist-open .plyr__playlist { opacity: 1; visibility: visible; }
+        .playlist-wrapper { display: flex; gap: 16px; overflow-x: auto; scrollbar-width: none; }
+        .playlist-item {
+            flex: 0 0 auto; width: 200px; height: 110px; color: #fff;
+            background: rgba(255, 255, 255, 0.12); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .playlist-item.active { background: rgba(255, 255, 255, 0.3); }
+        .plyr__control--resize::after { content: '⛶'; font-size: 19px; }
+    </style>
+</head>
+<body>
+    <div class="video-player-container">
+        <video id="player" playsinline controls></video>
+    </div>
+
+    <script src="plyr.min.js"></script>
+    <script>
+        let player;
+        const videoElement = document.getElementById('player');
+        const container = document.querySelector('.video-player-container');
+
+        function initPlayer() {
+            player = new Plyr('#player', {
+                controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'fullscreen'],
+                settings: ['quality', 'speed']
+            });
+
+            // UI Elements
+            const title = document.createElement('div');
+            title.className = 'plyr__title';
+            title.innerHTML = 'VideoPlyr Loading...';
+            document.querySelector('.plyr').appendChild(title);
+
+            const playlistDiv = document.createElement('div');
+            playlistDiv.className = 'plyr__playlist';
+            playlistDiv.innerHTML = '<div class="playlist-wrapper" id="playlistItems"></div>';
+            document.querySelector('.plyr').appendChild(playlistDiv);
+
+            title.onclick = () => document.querySelector('.plyr').classList.toggle('playlist-open');
+
+            // Resize Button
+            const resizeBtn = document.createElement('button');
+            resizeBtn.className = 'plyr__control plyr__control--resize';
+            document.querySelector('.plyr__controls').appendChild(resizeBtn);
+            const modes = ['mode-fill', 'mode-contain', 'mode-square'];
+            let currentMode = 0;
+            resizeBtn.onclick = () => {
+                const p = document.querySelector('.plyr');
+                p.classList.remove(...modes);
+                currentMode = (currentMode + 1) % modes.length;
+                p.classList.add(modes[currentMode]);
+            };
+
+            // Default Video
+            loadVideo("https://cdn.plyr.io/static/demo/View_From_A_Blue_Moon_Trailer-720p.mp4", "Demo Video");
+            
+            if(window.Android) Android.onVideoReady();
+        }
+
+        function loadVideo(url, titleText) {
+            videoElement.src = url;
+            document.querySelector('.plyr__title').innerText = titleText;
+            player.play();
+        }
+
+        function loadPlaylist(jsonStr) {
+            const data = JSON.parse(jsonStr);
+            const wrapper = document.getElementById('playlistItems');
+            wrapper.innerHTML = '';
+            data.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'playlist-item';
+                div.innerText = item.title;
+                div.onclick = () => {
+                    loadVideo(item.url, item.title);
+                    document.querySelectorAll('.playlist-item').forEach(i => i.classList.remove('active'));
+                    div.classList.add('active');
+                };
+                wrapper.appendChild(div);
+                if(index === 0) div.click();
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initPlayer);
+    </script>
+</body>
+</html>
